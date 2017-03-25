@@ -6,7 +6,6 @@
 from keras.layers import Dense, Flatten, Lambda, Activation, MaxPooling2D
 from keras.layers.convolutional import Convolution2D
 from keras.models import Sequential
-from keras.optimizers import Adam
 import json
 
 activation_relu = 'relu'
@@ -58,5 +57,5 @@ model.summary()
 
 # save the model achitecture
 json_string = model.to_json()
-with open('model.json', 'w') as outfile:
-    json.dump(json_string, outfile)
+with open('model.json', 'w') as json_file:
+    json_file.write(json_string)
