@@ -10,8 +10,9 @@ import matplotlib.pyplot as plt
 from keras.optimizers import Adam
 import time
 
-number_of_epochs = 8
-number_of_samples_per_epoch = 1100
+number_of_epochs = 50
+number_of_samples_per_epoch = 1230
+number_of_validation_samples = 432
 learning_rate = 1e-4
 
 # load json model
@@ -25,13 +26,26 @@ print ("Loaded the training model")
 model.compile(optimizer=Adam(learning_rate), loss="mse", )
 
 #get the data
-x, y = load_data.load_data()
-print(len(x))
-print(len(y))
-print("data loaded")
+# x, y = load_data.load_data()
+# print(len(x))
+# print(len(y))
+# print("data loaded")
 
 # train the model
-history = model.fit(x,y, batch_size=number_of_samples_per_epoch, epochs=number_of_epochs, verbose=1, callbacks=None, validation_split=0.11)
+#history = model.fit(x,y, batch_size=number_of_samples_per_epoch, nb_epoch=number_of_epochs, verbose=1, callbacks=None, validation_split=0.11)
+
+# create two generators for training and validation
+trainGen = load_data.genBatch()
+valGen = load_data.genBatch()
+evalGen = load_data.genBatch()
+
+history = model.fit_generator(trainGen,
+                              samples_per_epoch=number_of_samples_per_epoch,
+                              nb_epoch=number_of_epochs,
+                              validation_data=valGen,
+                              nb_val_samples=number_of_validation_samples,
+                              verbose=1)
+
 
 # score = model.evaluate_generator(evalGen, 1000, max_q_size=10)
 # print('Test score:', score[0])
@@ -41,7 +55,6 @@ history = model.fit(x,y, batch_size=number_of_samples_per_epoch, epochs=number_o
 model.save_weights('weights.h5')
 #save the model with weights
 model.save('model_weights.h5')
-
 
 # plots
 # summarize history for loss
@@ -53,5 +66,5 @@ plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['training', 'validation'], loc='upper left')
 plt.savefig('Loss_Plot_Center')
-print "Saved loss plot to disk"
+print("Saved loss plot to disk")
 plt.close()
