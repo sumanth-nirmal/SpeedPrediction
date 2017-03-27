@@ -46,7 +46,7 @@ def resize(image, new_dim):
     return scipy.misc.imresize(image, new_dim)
 
 # preprocess the images before training
-def processGeneratedImage(image, speed, resize_dim=(64, 64)):
+def processGeneratedImage(image, speed, resize_dim=(66, 220)):
 
     # resize
     image = resize(image, resize_dim)

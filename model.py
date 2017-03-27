@@ -11,12 +11,14 @@ from keras.layers.convolutional import Convolution2D
 from keras.models import Sequential
 import json
 
+mode_path='./model_weights/'
+
 activation_relu = 'relu'
 
 # model is based on NVIDIA's "End to End Learning for Self-Driving Cars" paper
 model = Sequential()
 
-model.add(Lambda(lambda x: x / 127.5 - 1.0, input_shape=(64, 64, 3)))
+model.add(Lambda(lambda x: x / 127.5 - 1.0, input_shape=(66, 220, 3)))
 
 # starts with five convolutional and maxpooling layers
 model.add(Convolution2D(24, 5, 5, border_mode='same', subsample=(2, 2)))
@@ -60,5 +62,5 @@ model.summary()
 
 # save the model achitecture
 json_string = model.to_json()
-with open('model.json', 'w') as json_file:
+with open(mode_path+'model.json', 'w') as json_file:
     json_file.write(json_string)

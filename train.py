@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from keras.optimizers import Adam
 import time
 
-number_of_epochs = 50
+number_of_epochs = 60
 number_of_samples_per_epoch = 128
 number_of_validation_samples = 1600
 learning_rate = 1e-4
