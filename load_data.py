@@ -22,34 +22,68 @@ data_extracted_path = './data_extracted/'
 with open(data_labels_path) as data_file:
    data = json.load(data_file)
 
-def crop(image, top_percent, bottom_percent):
-    """
-    Crops an image according to the given parameters
-    :param image: source image
-    :param top_percent:
-        The percentage of the original image will be cropped from the top of the image
-    :param bottom_percent:
-        The percentage of the original image will be cropped from the bottom of the image
-    :return:
-        The cropped image
-    """
-    assert 0 <= top_percent < 0.5, 'top_percent should be between 0.0 and 0.5'
-    assert 0 <= bottom_percent < 0.5, 'top_percent should be between 0.0 and 0.5'
+# crops the image
+def crop(image, top_percent, bottom_percent, left_percent, right_percent):
 
     top = int(np.ceil(image.shape[0] * top_percent))
     bottom = image.shape[0] - int(np.ceil(image.shape[0] * bottom_percent))
+    left = int(np.ceil(image.shape[1] * left_percent))
+    right = image.shape[1] - int(np.ceil(image.shape[1] * right_percent))
 
-    return image[top:bottom, :]
+    return image[top:bottom, left:right] #image[100:440, :-90]
 
 # resizes the image
 def resize(image, new_dim):
-    return scipy.misc.imresize(image, new_dim)
+    return cv2.resize(image, new_dim, interpolation = cv2.INTER_AREA)
+
+# calculates the magnitude and angle of of the optical flow vectors (u, v),
+# based on Gunner Farneback's algorithm, calculates optical flow for all the pixels
+### took reference from http://docs.opencv.org/3.1.0/d7/d8b/tutorial_py_lucas_kanade.html
+def getOpticalFlowDense(image, next_image, vis_optical_flow=False):
+    # convert to grey scale
+    image_grey = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    next_image_grey = cv2.cvtColor(next_image, cv2.COLOR_RGB2GRAY)
+
+    # compute the optical flow dense
+    flow = cv2.calcOpticalFlowFarneback(image_grey, next_image_grey, None, 0.5, 1, 15, 3, 5, 1.2, 0)
+
+    # get the magnitude and angle of the optical flow vectors
+    mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
+
+    # hsv mask with the image size
+    hsv = np.zeros_like(image)
+
+    # set saturation
+    hsv[:,:,1] = cv2.cvtColor(next_image, cv2.COLOR_RGB2HSV)[:,:,1]
+
+    # optical flow vector angle in hue
+    hsv[...,0] = ang*180/np.pi/2
+
+    # optical flow vector mahnitude is in value
+    hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
+
+    # convert back to RGB
+    hsv = np.asarray(hsv, dtype= np.float32)
+    rgb_optical_flow_dense = cv2.cvtColor(hsv,cv2.COLOR_HSV2RGB)
+
+    # viusulisation of dense optical flow
+    if vis_optical_flow == True:
+        cv2.imshow('optical_flow',rgb_optical_flow_dense)
+        cv2.waitKey(0)
+
+    return rgb_optical_flow_dense
+
+
 
 # preprocess the images before training
-def processGeneratedImage(image, speed, resize_dim=(66, 220)):
+def processGeneratedImage(image, speed, resize_dim=(220, 66)):
+
+    # crop the image
+    # crop the sky, right side black part and the bottom car symbol
+    image_crop = crop(image, 0.2, 0.08, 0, 1.14)
 
     # resize
-    image = resize(image, resize_dim)
+    image = resize(image_crop, resize_dim)
 
     return image, speed
 

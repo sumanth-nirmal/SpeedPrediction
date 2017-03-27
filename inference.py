@@ -34,11 +34,16 @@ print("compiled the model")
 y_actual = load_data.load_yLabels()
 x = load_data.load_xInput()
 
+# evaluate the weights
+print('evaluating....')
+score = model_val.evaluate(x, y_actual, 64, verbose=1)
+print('Evaluation loss: %f' % score)
+
+print('predicting.....')
 y_predicted=model_val.predict(x)
 print("output predicted")
-print(len(y_predicted))
 
-#Plotting speed actual vs predicted
+# Plotting speed actual vs predicted
 plt.figure(0)
 plt.plot(y_actual, label = 'Actual Dataset')
 plt.plot(y_predicted, label = 'Training Prediction')
