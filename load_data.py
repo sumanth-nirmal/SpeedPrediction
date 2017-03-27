@@ -10,17 +10,29 @@ import json
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.misc
-from scipy.ndimage import rotate
-from scipy.stats import bernoulli
 
 # folder name, where the data is given
 data_labels_path = './speed_challenge/drive.json'
 data_extracted_path = './data_extracted/'
 
+#split the train and validation data
+split_train_validation = 25 #represnts the test data %
+
 # load the json data
 with open(data_labels_path) as data_file:
    data = json.load(data_file)
+
+# split the data
+train=[]
+val=[]
+for i in range(0, len(data)):
+    randInt = np.random.randint(100)
+    if randInt <= split_train_validation:
+        #update the validation data
+        val.append([data[i][0], data[i][1]])
+    else:
+        #update training dat
+        train.append([data[i][0], data[i][1]])
 
 # crops the image
 def crop(image, top_percent, bottom_percent, left_percent, right_percent):
@@ -76,7 +88,7 @@ def getOpticalFlowDense(image, next_image, vis_optical_flow=False):
 
 
 # preprocess the images before training
-def processGeneratedImage(image, speed, resize_dim=(220, 66)):
+def processGeneratedImage(image, resize_dim=(220, 66)):
 
     # crop the image
     # crop the sky, right side black part and the bottom car symbol
@@ -85,30 +97,40 @@ def processGeneratedImage(image, speed, resize_dim=(220, 66)):
     # resize
     image = resize(image_crop, resize_dim)
 
-    return image, speed
+    return image
 
 # fetch the randmomised images and theri labels
-def fetchRandomizedImages_Labels(batch_size=64):
-    n_img = len(data)
+def fetchRandomizedImages_Labels(mode, batch_size=64):
+    if mode == 'train':
+        n_img = len(train)
+    if mode == 'val':
+        n_img = len(val)
+
     rnd_indices = np.random.randint(0, n_img, batch_size)
     x_y = []
     for i in rnd_indices:
-            x_y.append((data_extracted_path+"%f.jpg" % data[i][0], data[i][1]))
-
+        if mode == 'train':
+            x_y.append((data_extracted_path+"%f.jpg" % train[i][0], train[i][1]))
+        if mode == 'val':
+            x_y.append((data_extracted_path+"%f.jpg" % val[i][0], val[i][1]))
     return x_y
 
 # generator yields next training set
-def genData(batch_size=64):
+def genData(mode, batch_size=64):
     while True:
         X_batch = []
         y_batch = []
-        images = fetchRandomizedImages_Labels(batch_size)
+
+        if mode == 'train':
+            images = fetchRandomizedImages_Labels('train', batch_size)
+        if mode == 'val':
+            images = fetchRandomizedImages_Labels('val', batch_size)
+
         for img_file, speed in images:
             raw_image = plt.imread(img_file)
-            raw_speed = speed
-            new_image, new_speed = processGeneratedImage(raw_image, raw_speed)
+            new_image = processGeneratedImage(raw_image)
             X_batch.append(new_image)
-            y_batch.append(new_speed)
+            y_batch.append(speed)
 
         yield np.array(X_batch), np.array(y_batch)
 
@@ -118,7 +140,7 @@ def load_xInput():
     for i in range(0,len(data)):
         xt=plt.imread(data_extracted_path+"%f.jpg" % data[i][0])
         raw_speed = data[i][1]
-        new_image, new_speed = processGeneratedImage(xt, raw_speed)
+        new_image = processGeneratedImage(xt)
         x.append(new_image)
 
     return np.array(x)

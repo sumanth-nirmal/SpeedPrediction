@@ -14,7 +14,7 @@ from keras.optimizers import Adam
 import time
 
 number_of_epochs = 9
-number_of_samples_per_epoch = 5632
+number_of_samples_per_epoch = 4480
 number_of_validation_samples = 1950
 learning_rate = 1e-4
 
@@ -33,9 +33,10 @@ print ("Loaded the training model")
 model.compile(optimizer=Adam(learning_rate), loss="mse", )
 
 # create two generators for training and validation
-trainGen = load_data.genData(64) #128)
-valGen = load_data.genData(60)#)
-evalGen = load_data.genData(50)
+trainGen = load_data.genData('train', 64)
+valGen = load_data.genData('val', 60)
+#!!!!!!!!! same gnerator as val
+evalGen = load_data.genData('val', 50)
 
 history = model.fit_generator(trainGen,
                               samples_per_epoch=number_of_samples_per_epoch,
