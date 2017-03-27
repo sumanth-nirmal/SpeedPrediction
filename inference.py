@@ -12,14 +12,18 @@ import numpy
 import matplotlib.pyplot as plt
 import time
 
-json_file = open('./model_weights/model.json', 'r')
+# weights path
+model_path='./model_weights/model.json'
+model_weights_path='./model_weights/weights.h5'
+
+json_file = open(model_path, 'r')
 loaded_model_val = json_file.read()
 json_file.close()
 model_val = model_from_json(loaded_model_val)
 print("Loaded the model")
 
-#Load the trained weights
-model_val.load_weights("./model_weights/weights" + ".h5")
+# load the trained weights
+model_val.load_weights(model_weights_path)
 print("trained weights loaded")
 
 # compile the model
@@ -27,19 +31,14 @@ model_val.compile(loss='mse', optimizer='adam')
 print("compiled the model")
 
 # get the values of speed and the images
-y_actual = load_data.load_speed()
-x= load_data.load_x()
+y_actual = load_data.load_yLabels()
+x = load_data.load_xInput()
 
 y_predicted=model_val.predict(x)
 print("output predicted")
 print(len(y_predicted))
 
-# shift train predictions for plotting
-# trainPredictPlot = numpy.empty_like(y_actual)
-# trainPredictPlot[:, :] = numpy.nan
-# trainPredictPlot[0:len(trainPredict), :] = trainPredict
-
-#Plotting steering angle actual vs predicted
+#Plotting speed actual vs predicted
 plt.figure(0)
 plt.plot(y_actual, label = 'Actual Dataset')
 plt.plot(y_predicted, label = 'Training Prediction')

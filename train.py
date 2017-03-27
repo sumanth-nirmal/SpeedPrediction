@@ -14,8 +14,8 @@ from keras.optimizers import Adam
 import time
 
 number_of_epochs = 50
-number_of_samples_per_epoch = 120
-number_of_validation_samples = 432
+number_of_samples_per_epoch = 128
+number_of_validation_samples = 1600
 learning_rate = 1e-4
 
 # file path for the model
@@ -32,19 +32,10 @@ print ("Loaded the training model")
 # complie the model
 model.compile(optimizer=Adam(learning_rate), loss="mse", )
 
-#get the data
-# x, y = load_data.load_data()
-# print(len(x))
-# print(len(y))
-# print("data loaded")
-
-# train the model
-#history = model.fit(x,y, batch_size=number_of_samples_per_epoch, nb_epoch=number_of_epochs, verbose=1, callbacks=None, validation_split=0.11)
-
 # create two generators for training and validation
-trainGen = load_data.genBatch()
-valGen = load_data.genBatch()
-evalGen = load_data.genBatch()
+trainGen = load_data.genData()
+valGen = load_data.genData()
+evalGen = load_data.genData()
 
 history = model.fit_generator(trainGen,
                               samples_per_epoch=number_of_samples_per_epoch,
@@ -55,7 +46,7 @@ history = model.fit_generator(trainGen,
 
 
 # score = model.evaluate_generator(evalGen, 1000, max_q_size=10)
-# print('Evaluation accuracy: %.2f%%', score[1]*100)
+# print('Evaluation accuracy: %f' % score)
 
 # save the weights
 model.save_weights(weights_path+'/weights.h5')
