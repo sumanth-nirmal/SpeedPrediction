@@ -3,6 +3,9 @@
 ## Date: March 23, 2017
 # model to train the data
 
+# Python 2/3 compatibility
+from __future__ import print_function
+
 from keras.models import model_from_json
 import load_data
 import numpy
@@ -11,12 +14,16 @@ from keras.optimizers import Adam
 import time
 
 number_of_epochs = 50
-number_of_samples_per_epoch = 1230
+number_of_samples_per_epoch = 120
 number_of_validation_samples = 432
 learning_rate = 1e-4
 
+# file path for the model
+model_path = './model_weights/model.json'
+weights_path = './model_weights'
+
 # load json model
-json_file = open('model.json', 'r')
+json_file = open(model_path, 'r')
 loaded_model = json_file.read()
 json_file.close()
 model = model_from_json(loaded_model)
@@ -48,13 +55,12 @@ history = model.fit_generator(trainGen,
 
 
 # score = model.evaluate_generator(evalGen, 1000, max_q_size=10)
-# print('Test score:', score[0])
-# print('Test accuracy:', score[1])
+# print('Evaluation accuracy: %.2f%%', score[1]*100)
 
 # save the weights
-model.save_weights('weights.h5')
+model.save_weights(weights_path+'/weights.h5')
 #save the model with weights
-model.save('model_weights.h5')
+model.save(weights_path+'/model_weights.h5')
 
 # plots
 # summarize history for loss
@@ -65,6 +71,6 @@ plt.title('Model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['training', 'validation'], loc='upper left')
-plt.savefig('Loss_Plot_Center')
+plt.savefig('speed prediction loss plot')
 print("Saved loss plot to disk")
 plt.close()

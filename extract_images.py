@@ -3,6 +3,9 @@
 ## Date: March 23, 2017
 #extract images from video
 
+# Python 2/3 compatibility
+from __future__ import print_function
+
 import cv2
 import json
 

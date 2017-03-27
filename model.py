@@ -3,6 +3,9 @@
 ## Date: March 23, 2017
 # model to train the data
 
+# Python 2/3 compatibility
+from __future__ import print_function
+
 from keras.layers import Dense, Flatten, Lambda, Activation, MaxPooling2D
 from keras.layers.convolutional import Convolution2D
 from keras.models import Sequential
