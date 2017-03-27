@@ -27,26 +27,22 @@ model_val.compile(loss='mse', optimizer='adam')
 print("compiled the model")
 
 # get the values of speed and the images
-y_train_data = load_data.load_speed()
+y_actual = load_data.load_speed()
 x= load_data.load_x()
-#genT = load_data.genVel('center')
 
-#trainPredict = model_val.predict_generator(genT, val_samples = len(load_data.data))
-y=model_val.predict(x)
+y_predicted=model_val.predict(x)
 print("output predicted")
-print(len(y))
-print(y)
-print(y_train_data)
+print(len(y_predicted))
 
 # shift train predictions for plotting
-# trainPredictPlot = numpy.empty_like(y_train_data)
+# trainPredictPlot = numpy.empty_like(y_actual)
 # trainPredictPlot[:, :] = numpy.nan
 # trainPredictPlot[0:len(trainPredict), :] = trainPredict
 
 #Plotting steering angle actual vs predicted
 plt.figure(0)
-plt.plot(y_train_data, label = 'Actual Dataset')
-plt.plot(y, label = 'Training Prediction')
+plt.plot(y_actual, label = 'Actual Dataset')
+plt.plot(y_predicted, label = 'Training Prediction')
 plt.title('speed: Actual vs Predicted')
 plt.xlabel('Number of images')
 plt.ylabel('speed')
