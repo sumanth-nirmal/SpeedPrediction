@@ -11,13 +11,19 @@ import load_data
 import numpy
 import matplotlib.pyplot as plt
 import time
-from moviepy.editor import VideoFileClip
+import json
+import cv2
+import numpy as np
+from moviepy.editor import ImageSequenceClip
 
 # weights path
 model_path='./model_weights/model.json'
 model_weights_path='./model_weights/weights.h5'
 
+data_labels_path='./speed_challenge/drive.json'
+
 data_path='./data_extracted/'
+data_output_path='./data_predicted/'
 output_file = 'speed_predicted_output.mp4'
 
 json_file = open(model_path, 'r')
@@ -59,13 +65,24 @@ plt.savefig('speed predicted optical flow')
 print("Saved speed plot to disk")
 plt.close()
 
-# annotate the images and generate the video
+# annotate the images and save
 print('generating video.....')
+# load the json data
+with open(data_labels_path) as data_file:
+   data = json.load(data_file)
+
 for i in range(0, len(y_predicted)):
-    xt=plt.imread(data_path+"%f.jpg" % data[i][0])
-    cv2.putText(xt,'Actual Speed = {:1.2}'.format(y_actual[i]), (np.int(cols/2)-100,50), font, 1,(255,255,255),2)
-    cv2.putText(xt,'Predicted Speed = {:.0f}'.format(y_predicted[i]), (np.int(cols/2)-100,100), font, 1,(255,255,255),2)
+    xt=cv2.imread(data_path+"%f.jpg" % data[i][0])
+    cv2.putText(xt,'Act Speed = ' + str(y_actual[i]), (10,40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
+    cv2.putText(xt,'Pred Speed = ' + str(y_predicted[i]), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
     error=y_actual[i]-y_predicted[i]
-    cv2.putText(xt,'Error = {:.0f}'.format(error), (np.int(cols/2)-100,150), font, 1,(255,255,255),2)
-    annotated_video = video.fl_image(lambda img: xt)
-    annotated_video.write_videofile(output_file, audio=False)
+    cv2.putText(xt,'Error = ' + str(error), (10,120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+
+    if i%1000 == 0:
+        print("%d frames processed" % i)
+    cv2.imwrite(data_output_path+"%i.jpg" % i, xt)
+
+# generate the video, from the predicted annotated images
+vimages = [data_output_path+"%d.jpg" % i for i in range(0, len(data))]
+clip = ImageSequenceClip(vimages, fps=13)
+clip.write_videofile(output_file, fps=13)

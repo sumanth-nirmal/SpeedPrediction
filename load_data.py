@@ -86,7 +86,6 @@ def getOpticalFlowDense(image, next_image, vis_optical_flow=False):
     return rgb_optical_flow_dense
 
 
-
 # preprocess the images before training
 def processGeneratedImage(image, resize_dim=(220, 66)):
 
@@ -133,6 +132,41 @@ def genData(mode, batch_size=64):
             y_batch.append(speed)
 
         yield np.array(X_batch), np.array(y_batch)
+
+# generator yields next training set, using dense optical flow
+def genDataDOpticalflow(mode, batch_size=64):
+    while True:
+        X_batch = []
+        y_batch = []
+        for i in range(0, batch_size):
+            # generate a random number
+            rand_num = np.random.randint(0, len(train)-1)
+
+            # get the current image and the next image
+            curr_img = train[rand_num][0]
+            next_img = train[rand_num + 1][0]
+
+            print(curr_img, next_img)
+
+            # process the image
+            curr_image = plt.imread(curr_img)
+            curr_img=processGeneratedImage(curr_img)
+
+            next_img = plt.imread(next_img)
+            next_img=processGeneratedImage(next_img)
+
+            # get the dense flow of the 2 images
+            rgb_dense_flow = getOpticalFlowDense(curr_img, next_img)
+
+            # get the mean speed from both the images
+            speed=np.mean(train[rand_num][1] + train[rand_num+1][1])
+
+            # append the data
+            X_batch.append(rgb_dense_flow)
+            y_batch.append(speed)
+
+        yield np.array(X_batch), np.array(y_batch)
+
 
 # this returns the images as a numpy array
 def load_xInput():
