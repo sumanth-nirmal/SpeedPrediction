@@ -20,6 +20,11 @@ with open(data_labels_path) as data_file:
 
 # load the data
 cap = cv2.VideoCapture(data_path)
+
+# frames per sec
+fps = video.get(cv2.cv.CV_CAP_PROP_FPS)
+print "Frames per second in the input video: {0}".format(fps)
+
 count = 0
 while cap.isOpened():
     ret,frame = cap.read()

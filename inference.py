@@ -84,5 +84,5 @@ for i in range(0, len(y_predicted)):
 
 # generate the video, from the predicted annotated images
 vimages = [data_output_path+"%d.jpg" % i for i in range(0, len(data))]
-clip = ImageSequenceClip(vimages, fps=13)
-clip.write_videofile(output_file, fps=13)
+clip = ImageSequenceClip(vimages, fps=25)
+clip.write_videofile(output_file, fps=25)
