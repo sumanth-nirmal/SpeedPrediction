@@ -15,74 +15,173 @@ import json
 import cv2
 import numpy as np
 from moviepy.editor import ImageSequenceClip
+import argparse
+
+# path for the predicted images
+data_output_path='./data_predicted/'
 
 # weights path
 model_path='./model_weights/model.json'
-model_weights_path='./model_weights/weights.h5'
+model_weights_path='./model_weights/'
 
 data_labels_path='./speed_challenge/drive.json'
 
-data_path='./data_extracted/'
-data_output_path='./data_predicted/'
-output_file = 'speed_predicted_output.mp4'
+# optical flow dense draw on the video
+# reference from here: https://github.com/opencv/opencv/blob/master/samples/python/opt_flow.py
+def drawDenseOptFlow(image, next_image):
+    # convert to grey scale
+    image_grey = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    next_image_grey = cv2.cvtColor(next_image, cv2.COLOR_RGB2GRAY)
 
-json_file = open(model_path, 'r')
-loaded_model_val = json_file.read()
-json_file.close()
-model_val = model_from_json(loaded_model_val)
-print("Loaded the model")
+    # compute the optical flow dense
+    flow = cv2.calcOpticalFlowFarneback(image_grey, next_image_grey, None, 0.5, 1, 15, 2, 5, 1.3, 0)
 
-# load the trained weights
-model_val.load_weights(model_weights_path)
-print("trained weights loaded")
+    # draw the flow
+    step=16
+    h, w = next_image_grey.shape[:2]
+    y, x = np.mgrid[step/2:h:step, step/2:w:step].reshape(2,-1).astype(int)
+    fx, fy = flow[y,x].T
+    lines = np.vstack([x, y, x+fx, y+fy]).T.reshape(-1, 2, 2)
+    lines = np.int32(lines + 0.5)
+    vis_flow = cv2.cvtColor(next_image_grey, cv2.COLOR_GRAY2BGR)
+    cv2.polylines(vis_flow, lines, 0, (0, 255, 0))
+    for (x1, y1), (x2, y2) in lines:
+        cv2.circle(vis_flow, (x1, y1), 1, (0, 255, 0), -1)
 
-# compile the model
-model_val.compile(loss='mse', optimizer='adam')
-print("compiled the model")
+    # draw the hsv
+    h, w = flow.shape[:2]
+    fx, fy = flow[:,:,0], flow[:,:,1]
+    ang = np.arctan2(fy, fx) + np.pi
+    v = np.sqrt(fx*fx+fy*fy)
+    hsv = np.zeros((h, w, 3), np.uint8)
+    hsv[...,0] = ang*(180/np.pi/2)
+    hsv[...,1] = 255
+    hsv[...,2] = np.minimum(v*4, 255)
+    vis_hsv = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
-# get the values of speed and the images
-y_actual = load_data.load_yLabels()
-x = load_data.load_xInput()
+    # get the magnitude and angle of the optical flow vectors
+    mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
+    # hsv mask with the image size
+    hsv = np.zeros_like(image)
+    # set saturation
+    hsv[:,:,1] = cv2.cvtColor(next_image, cv2.COLOR_RGB2HSV)[:,:,1]
+    # optical flow vector angle in hue
+    hsv[...,0] = ang*180/np.pi/2
+    # optical flow vector mahnitude is in value
+    hsv[...,2] = cv2.normalize(mag,None,0,255,cv2.NORM_MINMAX)
+    # convert back to RGB
+    hsv = np.asarray(hsv, dtype= np.float32)
+    vis_hsv_rgb = cv2.cvtColor(hsv,cv2.COLOR_HSV2RGB)
 
-# evaluate the weights
-print('evaluating....')
-score = model_val.evaluate(x, y_actual, 64, verbose=1)
-print('Evaluation loss: %f' % score)
+    return vis_flow, vis_hsv, vis_hsv_rgb
 
-print('predicting.....')
-y_predicted=model_val.predict(x)
-print("output predicted")
+def main(images_extracted_path, mode="dense_optical_flow", video_generation="no"):
+    json_file = open(model_path, 'r')
+    loaded_model_val = json_file.read()
+    json_file.close()
+    model_val = model_from_json(loaded_model_val)
+    print("Loaded the model")
 
-# Plotting speed actual vs predicted
-plt.figure(0)
-plt.plot(y_actual, label = 'Actual Dataset')
-plt.plot(y_predicted, label = 'Training Prediction')
-plt.title('speed: Actual vs Predicted')
-plt.xlabel('Number of images')
-plt.ylabel('speed')
-plt.legend(loc = 'upper left')
-plt.savefig('speed predicted optical flow')
-print("Saved speed plot to disk")
-plt.close()
+    # load the trained weights
+    if mode == "dense_optical_flow":
+        model_val.load_weights(model_weights_path+'DenseOptflow_weights.h5')
+    else:
+        model_val.load_weights(model_weights_path+'rgb_weights.h5')
+    print("trained weights loaded")
 
-# annotate the images and save
-print('generating video.....')
-# load the json data
-with open(data_labels_path) as data_file:
-   data = json.load(data_file)
+    # compile the model
+    model_val.compile(loss='mse', optimizer='adam')
+    print("compiled the model")
 
-for i in range(0, len(y_predicted)):
-    xt=cv2.imread(data_path+"%f.jpg" % data[i][0])
-    cv2.putText(xt,'Act Speed = ' + str(y_actual[i]), (10,40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
-    cv2.putText(xt,'Pred Speed = ' + str(y_predicted[i]), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
-    error=y_actual[i]-y_predicted[i]
-    cv2.putText(xt,'Error = ' + str(error), (10,120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+    if mode == "dense_optical_flow":
+        x = load_data.load_XDenseOptFlowInput()
+        y_actual = load_data.load_yDenseOptFlowLabels()
+    else:
+        x = load_data.load_xInput()
+        y_actual = load_data.load_yLabels()()
 
-    if i%1000 == 0:
-        print("%d frames processed" % i)
-    cv2.imwrite(data_output_path+"%i.jpg" % i, xt)
+    # evaluate the weights
+    print('evaluating....')
+    score = model_val.evaluate(x, y_actual, 64, verbose=1)
+    print('Evaluation loss: %f' % score)
 
-# generate the video, from the predicted annotated images
-vimages = [data_output_path+"%d.jpg" % i for i in range(0, len(data))]
-clip = ImageSequenceClip(vimages, fps=25)
-clip.write_videofile(output_file, fps=25)
+    print('predicting.....')
+    y_predicted=model_val.predict(x)
+
+    # Plotting speed actual vs predicted
+    plt.figure(0)
+    plt.plot(y_actual, label = 'Actual Dataset')
+    plt.plot(y_predicted, label = 'Training Prediction')
+    plt.title('speed: Actual vs Predicted')
+    plt.xlabel('Number of images')
+    plt.ylabel('speed')
+    plt.legend(loc = 'upper left')
+    plt.savefig('speed predicted optical flow')
+    print("Saved speed plot to disk")
+    plt.close()
+
+    # annotate the images and save
+    if video_generation == "yes":
+        print('generating video.....')
+        # load the json data
+        with open(data_labels_path) as data_file:
+            data = json.load(data_file)
+
+        for i in range(0, len(y_predicted)):
+            xt=cv2.imread(images_extracted_path+"%f.jpg" % data[i][0])
+            cv2.putText(xt,'Act Speed = ' + str(y_actual[i]), (10,40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
+            cv2.putText(xt,'Pred Speed = ' + str(y_predicted[i]), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
+            error=y_actual[i]-y_predicted[i]
+            cv2.putText(xt,'Error = ' + str(error), (10,120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+
+            if mode == "dense_optical_flow":
+                cur_im = cv2.imread(images_extracted_path+"%f.jpg" % data[i][0])
+                nxt_im = cv2.imread(images_extracted_path+"%f.jpg" % data[i+1][0])
+
+                # get the visulaoisations for the flow
+                vis_flow, vis_hsv, vis_rgb_hsv = drawDenseOptFlow(cur_im, nxt_im)
+
+                # merge all the vis
+                merged1 = np.hstack((xt,vis_flow))
+                merged2 = np.hstack((vis_hsv,vis_rgb_hsv))
+                merged = np.vstack((merged1,merged2))
+
+                # save the images
+                cv2.imwrite(data_output_path+"%i.jpg" % i, merged)
+            else:
+                cv2.imwrite(data_output_path+"%i.jpg" % i, xt)
+
+            if i%1000 == 0:
+                print("%d frames processed" % i)
+
+        # generate the video, from the predicted annotated images
+        vimages = [data_output_path+"%d.jpg" % i for i in range(0, len(y_predicted))]
+        clip = ImageSequenceClip(vimages, fps=25)
+        if mode == "dense_optical_flow":
+            clip.write_videofile('speed_predicted_optDense_flow.mp4', fps=25)
+        else:
+            clip.write_videofile('speed_predicted_rgb.mp4', fps=25)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='inference for speed estimation')
+    parser.add_argument(
+        'extracted_images_path',
+        type=str,
+        default='./data_extracted/',
+        help='path for the extarcted images'
+    )
+    parser.add_argument(
+        'mode',
+        type=str,
+        default="dense_optical_flow",
+        help='mode to indicate whether the inference should happen with rgb or dense optical flow'
+    )
+    parser.add_argument(
+        'video_generation',
+        type=str,
+        default="yes",
+        help='flag to indicate whether the video should be generated'
+    )
+    args = parser.parse_args()
+
+    main(args.extracted_images_path, args.mode, args.video_generation)

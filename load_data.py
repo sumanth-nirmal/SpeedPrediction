@@ -10,6 +10,8 @@ import json
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import random
+from sklearn.utils import shuffle
 
 # folder name, where the data is given
 data_labels_path = './speed_challenge/drive.json'
@@ -25,14 +27,29 @@ with open(data_labels_path) as data_file:
 # split the data
 train=[]
 val=[]
-for i in range(0, len(data)):
-    randInt = np.random.randint(100)
-    if randInt <= split_train_validation:
-        #update the validation data
-        val.append([data[i][0], data[i][1]])
-    else:
-        #update training dat
-        train.append([data[i][0], data[i][1]])
+
+#shuffle the data
+def shuffleData(mode="rgb"):
+    global train
+    global val
+    for i in range(0, len(data)-1):
+        rand_idx = np.random.randint(len(data)-1)
+        randInt = np.random.randint(100)
+        if randInt <= split_train_validation:
+            #update the validation data
+            val.append([data[rand_idx][0], data[rand_idx][1]])
+            if mode == "dense_optical_flow":
+                # update in pairs, as we do motion analysis
+                val.append([data[rand_idx+1][0], data[rand_idx+1][1]])
+        else:
+            #update training dat
+            train.append([data[rand_idx][0], data[rand_idx][1]])
+            if mode == "dense_optical_flow":
+                train.append([data[rand_idx+1][0], data[rand_idx+1][1]])
+
+    print("train size: %d" % len(train))
+    print("val size %d "  % len(val))
+
 
 # crops the image
 def crop(image, top_percent, bottom_percent, left_percent, right_percent):
@@ -48,6 +65,17 @@ def crop(image, top_percent, bottom_percent, left_percent, right_percent):
 def resize(image, new_dim):
     return cv2.resize(image, new_dim, interpolation = cv2.INTER_AREA)
 
+# changes the brightness
+def factorBrightness(image, factor):
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
+
+    # perform brightness augmentation only on the second channel
+    hsv_image[:,:,2] = hsv_image[:,:,2] * factor
+
+    # change back to RGB
+    image_rgb = cv2.cvtColor(hsv_image, cv2.COLOR_HSV2RGB)
+    return image_rgb
+
 # calculates the magnitude and angle of of the optical flow vectors (u, v),
 # based on Gunner Farneback's algorithm, calculates optical flow for all the pixels
 ### took reference from http://docs.opencv.org/3.1.0/d7/d8b/tutorial_py_lucas_kanade.html
@@ -57,7 +85,7 @@ def getOpticalFlowDense(image, next_image, vis_optical_flow=False):
     next_image_grey = cv2.cvtColor(next_image, cv2.COLOR_RGB2GRAY)
 
     # compute the optical flow dense
-    flow = cv2.calcOpticalFlowFarneback(image_grey, next_image_grey, None, 0.5, 1, 15, 3, 5, 1.2, 0)
+    flow = cv2.calcOpticalFlowFarneback(image_grey, next_image_grey, None, 0.5, 1, 15, 2, 5, 1.3, 0)
 
     # get the magnitude and angle of the optical flow vectors
     mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
@@ -87,7 +115,13 @@ def getOpticalFlowDense(image, next_image, vis_optical_flow=False):
 
 
 # preprocess the images before training
-def processGeneratedImage(image, resize_dim=(220, 66)):
+def processGeneratedImage(image, factor=1, resize_dim=(220, 66)):
+
+    #convert to rgb
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # factor the brightness
+    image = factorBrightness(image, factor)
 
     # crop the image
     # crop the sky, right side black part and the bottom car symbol
@@ -131,7 +165,8 @@ def genData(mode, batch_size=64):
             X_batch.append(new_image)
             y_batch.append(speed)
 
-        yield np.array(X_batch), np.array(y_batch)
+        # shuffle tha data and yield
+        yield shuffle(np.array(X_batch), np.array(y_batch))
 
 # generator yields next training set, using dense optical flow
 def genDataDOpticalflow(mode, batch_size=64):
@@ -139,34 +174,95 @@ def genDataDOpticalflow(mode, batch_size=64):
         X_batch = []
         y_batch = []
         for i in range(0, batch_size):
-            # generate a random number
-            rand_num = np.random.randint(0, len(train)-1)
+            if mode == 'train':
+                # generate a random number
+                rand_num = np.random.randint(1, len(train)-1) # make sure we dont wrap around the bounds
 
-            # get the current image and the next image
-            curr_img = train[rand_num][0]
-            next_img = train[rand_num + 1][0]
+                # get 3 images and speeds around the random index, and decide which is current and which is next
+                prev_idx = train[rand_num - 1][0]
+                speed_prev = train[rand_num - 1][1]
 
-            print(curr_img, next_img)
+                curr_idx = train[rand_num][0]
+                speed_curr = train[rand_num][1]
+
+                next_idx = train[rand_num + 1][0]
+                speed_next = train[rand_num + 1][1]
+
+                # sort the timings as the data is shuffled
+                sort_idx=[[prev_idx, speed_prev], [curr_idx, speed_curr], [next_idx, speed_next]]
+                sort_idx.sort()
+
+                # as we need frames next to each other
+                if sort_idx[1][0] - sort_idx[0][0] < 0.4:
+                    curr_img_idx = sort_idx[0][0]
+                    next_img_idx = sort_idx[1][0]
+                    curr_speed = sort_idx[0][1]
+                    next_speed = sort_idx[1][1]
+                elif sort_idx[2][0] - sort_idx[1][0] < 0.4:
+                    curr_img_idx = sort_idx[1][0]
+                    next_img_idx = sort_idx[2][0]
+                    curr_speed = sort_idx[1][1]
+                    next_speed = sort_idx[2][1]
+                else:
+                    print("bummer..!!!!!, eliminate the sample")
+
+            if mode == 'val':
+                # generate a random number
+                rand_num = np.random.randint(0, len(val)-1)
+
+                # get 3 images and speeds around the random index, and decide which is current and which is next
+                prev_idx = val[rand_num - 1][0]
+                speed_prev = val[rand_num - 1][1]
+
+                curr_idx = val[rand_num][0]
+                speed_curr = val[rand_num][1]
+
+                next_idx = val[rand_num + 1][0]
+                speed_next = val[rand_num+1][1]
+
+                # sort the timings as the data is shuffled
+                sort_idx=[[prev_idx, speed_prev], [curr_idx, speed_curr], [next_idx, speed_next]]
+                sort_idx.sort()
+
+                # as we need frames next to each other
+                if sort_idx[1][0] - sort_idx[0][0] < 0.4:
+                    curr_img_idx = sort_idx[0][0]
+                    next_img_idx = sort_idx[1][0]
+                    curr_speed = sort_idx[0][1]
+                    next_speed = sort_idx[1][1]
+                elif sort_idx[2][0] - sort_idx[1][0] < 0.4:
+                    curr_img_idx = sort_idx[1][0]
+                    next_img_idx = sort_idx[2][0]
+                    curr_speed = sort_idx[1][1]
+                    next_speed = sort_idx[2][1]
+                else:
+                    print("bummer..!!!!!, eliminate the sample")
 
             # process the image
-            curr_image = plt.imread(curr_img)
-            curr_img=processGeneratedImage(curr_img)
+            b_factor = 0.2 + np.random.uniform()
 
-            next_img = plt.imread(next_img)
-            next_img=processGeneratedImage(next_img)
+            curr_img = plt.imread(data_extracted_path+"%f.jpg" % curr_img_idx)
+            curr_img = processGeneratedImage(curr_img, b_factor)
+            next_img = plt.imread(data_extracted_path+"%f.jpg" % next_img_idx)
+            next_img = processGeneratedImage(next_img, b_factor)
 
             # get the dense flow of the 2 images
             rgb_dense_flow = getOpticalFlowDense(curr_img, next_img)
-
-            # get the mean speed from both the images
-            speed=np.mean(train[rand_num][1] + train[rand_num+1][1])
+            if mode == 'val':
+                rgb_dense_flow = rgb_dense_flow.reshape(1, rgb_dense_flow.shape[0], rgb_dense_flow.shape[1], rgb_dense_flow.shape[2])
 
             # append the data
             X_batch.append(rgb_dense_flow)
+
+            # get the mean speed from both the images
+            speed=np.mean([curr_speed, next_speed])
             y_batch.append(speed)
 
-        yield np.array(X_batch), np.array(y_batch)
-
+            # shuffle tha data and yield
+            if mode == 'val':
+                yield rgb_dense_flow, np.array([[speed]])
+        if mode == 'train':
+            yield shuffle(np.array(X_batch), np.array(y_batch))
 
 # this returns the images as a numpy array
 def load_xInput():
@@ -182,7 +278,39 @@ def load_xInput():
 # this returns the speeds as a numpy array
 def load_yLabels():
     y=[]
-    for i in range(0,len(data)):
+    for i in range(0, len(data)-1):
+        yt=data[i][1]
+        y.append(yt)
+
+    return np.array(y)
+
+def load_XDenseOptFlowInput():
+    x=[]
+    for i in range(0, len(data)-1):
+        # get the current image and the next image
+        curr_img = data[i][0]
+        next_img = data[i + 1][0]
+
+        # process the image
+        curr_img = plt.imread(data_extracted_path+"%f.jpg" % curr_img)
+        curr_img=processGeneratedImage(curr_img)
+        next_img = plt.imread(data_extracted_path+"%f.jpg" % next_img)
+        next_img=processGeneratedImage(next_img)
+
+        # get the dense flow of the 2 images
+        rgb_dense_flow = getOpticalFlowDense(curr_img, next_img)
+        #rgb_dense_flow = rgb_dense_flow.reshape(1, rgb_dense_flow.shape[0], rgb_dense_flow.shape[1], rgb_dense_flow.shape[2])
+
+        # append the data
+        x.append(rgb_dense_flow)
+
+    print(len(x))
+    return np.array(x)
+
+# this returns the speeds as a numpy array
+def load_yDenseOptFlowLabels():
+    y=[]
+    for i in range(1, len(data)):
         yt=data[i][1]
         y.append(yt)
 
