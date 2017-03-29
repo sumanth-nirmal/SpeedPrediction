@@ -19,7 +19,7 @@ model_path = './model_weights/model.json'
 weights_path = './model_weights'
 
 # training parameters
-number_of_epochs = 7
+number_of_epochs = 10
 learning_rate = 1e-4
 
 def main(mode="dense_optical_flow"):

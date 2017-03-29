@@ -98,7 +98,7 @@ def main(images_extracted_path, mode="dense_optical_flow", video_generation="no"
         y_actual = load_data.load_yDenseOptFlowLabels()
     else:
         x = load_data.load_xInput()
-        y_actual = load_data.load_yLabels()()
+        y_actual = load_data.load_yLabels()
 
     # evaluate the weights
     print('evaluating....')
@@ -116,7 +116,10 @@ def main(images_extracted_path, mode="dense_optical_flow", video_generation="no"
     plt.xlabel('Number of images')
     plt.ylabel('speed')
     plt.legend(loc = 'upper left')
-    plt.savefig('speed predicted optical flow')
+    if mode == "dense_optical_flow":
+        plt.savefig('speed predicted optical flow')
+    else:
+        plt.savefig('speed predicted rgb')
     print("Saved speed plot to disk")
     plt.close()
 
@@ -165,19 +168,19 @@ def main(images_extracted_path, mode="dense_optical_flow", video_generation="no"
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='inference for speed estimation')
     parser.add_argument(
-        'extracted_images_path',
+        '--extracted_images_path',
         type=str,
         default='./data_extracted/',
         help='path for the extarcted images'
     )
     parser.add_argument(
-        'mode',
+        '--mode',
         type=str,
         default="dense_optical_flow",
         help='mode to indicate whether the inference should happen with rgb or dense optical flow'
     )
     parser.add_argument(
-        'video_generation',
+        '--video_generation',
         type=str,
         default="yes",
         help='flag to indicate whether the video should be generated'
