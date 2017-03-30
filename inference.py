@@ -16,6 +16,7 @@ import cv2
 import numpy as np
 from moviepy.editor import ImageSequenceClip
 import argparse
+import scipy
 
 # path for the predicted images
 data_output_path='./data_predicted/'
@@ -106,11 +107,22 @@ def main(images_extracted_path, mode="dense_optical_flow", video_generation="no"
     print('Evaluation loss: %f' % score)
 
     print('predicting.....')
-    y_predicted=model_val.predict(x)
+    y=model_val.predict(x)
+    y=y.flatten()
+    y_predicted=y
+
+    # smoothing the predicted data, can be removed
+    if mode == "dense_optical_flow":
+        # smooth using Savitzky–Golay filter
+        y_predicted = scipy.signal.savgol_filter(y, 101, 3) # 101 window length and fit using 3 order polynomial
+    else:
+        # smooth using Savitzky–Golay filter
+        y_predicted = scipy.signal.savgol_filter(y, 51, 3) # 51 window length and fit using 3 order polynomial
 
     # Plotting speed actual vs predicted
     plt.figure(0)
-    plt.plot(y_predicted, label = 'Training Prediction')
+    plt.plot(y, label = 'Training Prediction')
+    plt.plot(y_predicted, label = 'Training Prediction smoothed')
     plt.plot(y_actual, label = 'Actual Dataset')
     plt.title('speed: Actual vs Predicted')
     plt.xlabel('Number of images')

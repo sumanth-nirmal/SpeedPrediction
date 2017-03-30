@@ -238,8 +238,8 @@ def genDataDOpticalflow(mode, batch_size=64):
             # append the data
             X_batch.append(rgb_dense_flow)
 
-            # get the mean speed from both the images
-            speed=np.mean([curr_speed, next_speed])
+            # get the next speed of next image
+            speed=next_speed
             y_batch.append(speed)
 
         yield shuffle(np.array(X_batch), np.array(y_batch))
@@ -289,8 +289,8 @@ def load_XDenseOptFlowInput():
 def load_yDenseOptFlowLabels():
     y=[]
     for i in range(1, len(data)):
-        # as we estimate the mean of the speed of both the images
-        yt = np.mean([data[i-1][1], data[i][1]])
+        # as we estimate the speed of next image
+        yt = data[i][1]
         y.append(yt)
 
     return np.array(y)
