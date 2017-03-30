@@ -110,8 +110,8 @@ def main(images_extracted_path, mode="dense_optical_flow", video_generation="no"
 
     # Plotting speed actual vs predicted
     plt.figure(0)
-    plt.plot(y_actual, label = 'Actual Dataset')
     plt.plot(y_predicted, label = 'Training Prediction')
+    plt.plot(y_actual, label = 'Actual Dataset')
     plt.title('speed: Actual vs Predicted')
     plt.xlabel('Number of images')
     plt.ylabel('speed')
@@ -131,15 +131,15 @@ def main(images_extracted_path, mode="dense_optical_flow", video_generation="no"
             data = json.load(data_file)
 
         for i in range(0, len(y_predicted)):
-            xt=cv2.imread(images_extracted_path+"%f.jpg" % data[i][0])
-            cv2.putText(xt,'Act Speed = ' + str(y_actual[i]), (10,40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
-            cv2.putText(xt,'Pred Speed = ' + str(y_predicted[i]), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
-            error=y_actual[i]-y_predicted[i]
-            cv2.putText(xt,'Error = ' + str(error), (10,120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
-
             if mode == "dense_optical_flow":
                 cur_im = cv2.imread(images_extracted_path+"%f.jpg" % data[i][0])
                 nxt_im = cv2.imread(images_extracted_path+"%f.jpg" % data[i+1][0])
+
+                xt=nxt_im.copy()
+                cv2.putText(xt,'Act Speed = ' + str(y_actual[i]), (10,40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
+                cv2.putText(xt,'Pred Speed = ' + str(y_predicted[i]), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
+                error=y_actual[i]-y_predicted[i]
+                cv2.putText(xt,'Error = ' + str(error), (10,120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
 
                 # get the visulaoisations for the flow
                 vis_flow, vis_hsv, vis_rgb_hsv = drawDenseOptFlow(cur_im, nxt_im)
@@ -152,6 +152,13 @@ def main(images_extracted_path, mode="dense_optical_flow", video_generation="no"
                 # save the images
                 cv2.imwrite(data_output_path+"%i.jpg" % i, merged)
             else:
+                xt=cv2.imread(images_extracted_path+"%f.jpg" % data[i][0])
+                cv2.putText(xt,'Act Speed = ' + str(y_actual[i]), (10,40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
+                cv2.putText(xt,'Pred Speed = ' + str(y_predicted[i]), (10,80), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,0,0), 2)
+                error=y_actual[i]-y_predicted[i]
+                cv2.putText(xt,'Error = ' + str(error), (10,120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0,0,255), 2)
+
+                # save the images
                 cv2.imwrite(data_output_path+"%i.jpg" % i, xt)
 
             if i%1000 == 0:

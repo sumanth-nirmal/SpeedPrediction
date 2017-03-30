@@ -19,7 +19,17 @@ import argparse
 data_video_path='./speed_challenge/drive.mp4'
 data_label_path='./speed_challenge/drive.json'
 
-def estimateSpeed(cap, vis="no"):
+# crops the image
+def crop(image, top_percent, bottom_percent, left_percent, right_percent):
+
+    top = int(np.ceil(image.shape[0] * top_percent))
+    bottom = image.shape[0] - int(np.ceil(image.shape[0] * bottom_percent))
+    left = int(np.ceil(image.shape[1] * left_percent))
+    right = image.shape[1] - int(np.ceil(image.shape[1] * right_percent))
+
+    return image[top:bottom, left:right] #image[100:440, :-90]
+
+def estimateSpeed(cap, vis_enable="no"):
     track_len = 10
     detect_interval = 5
     frame_idx = 0
@@ -45,6 +55,10 @@ def estimateSpeed(cap, vis="no"):
     while cap.isOpened():
             # get the frame
             ret, frame = cap.read()
+
+            # crop the image
+            frame = crop(frame, 0.2, 0.08, 0, 1.14)
+
             # convert to grey scale
             frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             vis = frame.copy()
@@ -71,6 +85,10 @@ def estimateSpeed(cap, vis="no"):
                 tracks = new_tracks
                 cv2.polylines(vis, [np.int32(tr) for tr in tracks], False, (0, 255, 0))
 
+                print(p1)
+                cv2.imshow('t1', vis)
+                cv2.waitKey(0)
+
             if frame_idx % detect_interval == 0:
                 mask = np.zeros_like(frame_gray)
                 mask[:] = 255
@@ -83,8 +101,7 @@ def estimateSpeed(cap, vis="no"):
 
             frame_idx += 1
             prev_gray = frame_gray
-
-            if vis == "yes":
+            if vis_enable == "yes":
                 cv2.imshow('optical_flow', vis)
                 ch = cv2.waitKey(1)
                 if ch == 27:

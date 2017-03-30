@@ -65,17 +65,6 @@ def crop(image, top_percent, bottom_percent, left_percent, right_percent):
 def resize(image, new_dim):
     return cv2.resize(image, new_dim, interpolation = cv2.INTER_AREA)
 
-# changes the brightness
-def factorBrightness(image, factor):
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV)
-
-    # perform brightness augmentation only on the second channel
-    hsv_image[:,:,2] = hsv_image[:,:,2] * factor
-
-    # change back to RGB
-    image_rgb = cv2.cvtColor(hsv_image, cv2.COLOR_HSV2RGB)
-    return image_rgb
-
 # calculates the magnitude and angle of of the optical flow vectors (u, v),
 # based on Gunner Farneback's algorithm, calculates optical flow for all the pixels
 ### took reference from http://docs.opencv.org/3.1.0/d7/d8b/tutorial_py_lucas_kanade.html
@@ -119,9 +108,6 @@ def processGeneratedImage(image, factor=1, resize_dim=(220, 66)):
 
     #convert to rgb
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-    # factor the brightness
-    image = factorBrightness(image, factor)
 
     # crop the image
     # crop the sky, right side black part and the bottom car symbol
@@ -248,8 +234,6 @@ def genDataDOpticalflow(mode, batch_size=64):
 
             # get the dense flow of the 2 images
             rgb_dense_flow = getOpticalFlowDense(curr_img, next_img)
-            if mode == 'val':
-                rgb_dense_flow = rgb_dense_flow.reshape(1, rgb_dense_flow.shape[0], rgb_dense_flow.shape[1], rgb_dense_flow.shape[2])
 
             # append the data
             X_batch.append(rgb_dense_flow)
@@ -258,16 +242,12 @@ def genDataDOpticalflow(mode, batch_size=64):
             speed=np.mean([curr_speed, next_speed])
             y_batch.append(speed)
 
-            # shuffle tha data and yield
-            if mode == 'val':
-                yield rgb_dense_flow, np.array([[speed]])
-        if mode == 'train':
-            yield shuffle(np.array(X_batch), np.array(y_batch))
+        yield shuffle(np.array(X_batch), np.array(y_batch))
 
 # this returns the images as a numpy array
 def load_xInput():
     x=[]
-    for i in range(0,len(data)):
+    for i in range(0, len(data)):
         xt=plt.imread(data_extracted_path+"%f.jpg" % data[i][0])
         raw_speed = data[i][1]
         new_image = processGeneratedImage(xt)
@@ -278,7 +258,7 @@ def load_xInput():
 # this returns the speeds as a numpy array
 def load_yLabels():
     y=[]
-    for i in range(0, len(data)-1):
+    for i in range(0, len(data)):
         yt=data[i][1]
         y.append(yt)
 
@@ -299,19 +279,18 @@ def load_XDenseOptFlowInput():
 
         # get the dense flow of the 2 images
         rgb_dense_flow = getOpticalFlowDense(curr_img, next_img)
-        #rgb_dense_flow = rgb_dense_flow.reshape(1, rgb_dense_flow.shape[0], rgb_dense_flow.shape[1], rgb_dense_flow.shape[2])
 
         # append the data
         x.append(rgb_dense_flow)
 
-    print(len(x))
     return np.array(x)
 
 # this returns the speeds as a numpy array
 def load_yDenseOptFlowLabels():
     y=[]
     for i in range(1, len(data)):
-        yt=data[i][1]
+        # as we estimate the mean of the speed of both the images
+        yt = np.mean([data[i-1][1], data[i][1]])
         y.append(yt)
 
     return np.array(y)
