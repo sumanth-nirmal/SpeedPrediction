@@ -244,32 +244,36 @@ def genDataDOpticalflow(mode, batch_size=64):
 
         yield shuffle(np.array(X_batch), np.array(y_batch))
 
+##############################################################################
+# methods will be used in inference.py
+# should be moved...!!!
+
 # this returns the images as a numpy array
-def load_xInput():
+def load_xInput(data_json_extracted):
     x=[]
-    for i in range(0, len(data)):
-        xt=plt.imread(data_extracted_path+"%f.jpg" % data[i][0])
-        raw_speed = data[i][1]
+    for i in range(0, len(data_json_extracted)):
+        xt=plt.imread(data_extracted_path+"%f.jpg" % data_json_extracted[i][0])
+        raw_speed = data_json_extracted[i][1]
         new_image = processGeneratedImage(xt)
         x.append(new_image)
 
     return np.array(x)
 
 # this returns the speeds as a numpy array
-def load_yLabels():
+def load_yLabels(data_json_extracted):
     y=[]
-    for i in range(0, len(data)):
-        yt=data[i][1]
+    for i in range(0, len(data_json_extracted)):
+        yt=data_json_extracted[i][1]
         y.append(yt)
 
     return np.array(y)
 
-def load_XDenseOptFlowInput():
+def load_XDenseOptFlowInput(data_json_extracted):
     x=[]
-    for i in range(0, len(data)-1):
+    for i in range(0, len(data_json_extracted)-1):
         # get the current image and the next image
-        curr_img = data[i][0]
-        next_img = data[i + 1][0]
+        curr_img = data_json_extracted[i][0]
+        next_img = data_json_extracted[i + 1][0]
 
         # process the image
         curr_img = plt.imread(data_extracted_path+"%f.jpg" % curr_img)
@@ -286,11 +290,11 @@ def load_XDenseOptFlowInput():
     return np.array(x)
 
 # this returns the speeds as a numpy array
-def load_yDenseOptFlowLabels():
+def load_yDenseOptFlowLabels(data_json_extracted):
     y=[]
-    for i in range(1, len(data)):
+    for i in range(1, len(data_json_extracted)):
         # as we estimate the speed of next image
-        yt = data[i][1]
+        yt = data_json_extracted[i][1]
         y.append(yt)
 
     return np.array(y)

@@ -25,8 +25,6 @@ data_output_path='./data_predicted/'
 model_path='./model_weights/model.json'
 model_weights_path='./model_weights/'
 
-data_labels_path='./speed_challenge/drive.json'
-
 # optical flow dense draw on the video
 # reference from here: https://github.com/opencv/opencv/blob/master/samples/python/opt_flow.py
 def drawDenseOptFlow(image, next_image):
@@ -43,11 +41,11 @@ def drawDenseOptFlow(image, next_image):
     y, x = np.mgrid[step/2:h:step, step/2:w:step].reshape(2,-1).astype(int)
     fx, fy = flow[y,x].T
     lines = np.vstack([x, y, x+fx, y+fy]).T.reshape(-1, 2, 2)
-    lines = np.int32(lines + 0.5)
+    lines = np.int32(lines + 2.5)
     vis_flow = cv2.cvtColor(next_image_grey, cv2.COLOR_GRAY2BGR)
-    cv2.polylines(vis_flow, lines, 0, (0, 255, 0))
+    cv2.polylines(vis_flow, lines, 1, (0, 0, 255), 2)
     for (x1, y1), (x2, y2) in lines:
-        cv2.circle(vis_flow, (x1, y1), 1, (0, 255, 0), -1)
+        cv2.circle(vis_flow, (x1, y1), 2, (0, 255, 0), -1)
 
     # draw the hsv
     h, w = flow.shape[:2]
@@ -76,7 +74,8 @@ def drawDenseOptFlow(image, next_image):
 
     return vis_flow, vis_hsv, vis_hsv_rgb
 
-def main(images_extracted_path, mode="dense_optical_flow", video_generation="no"):
+def main(images_extracted_path, data_json_path, mode="dense_optical_flow", video_generation="no"):
+
     json_file = open(model_path, 'r')
     loaded_model_val = json_file.read()
     json_file.close()
@@ -94,12 +93,16 @@ def main(images_extracted_path, mode="dense_optical_flow", video_generation="no"
     model_val.compile(loss='mse', optimizer='adam')
     print("compiled the model")
 
+    # load the json data, with image names and the speeds
+    with open(data_json_path) as data_file:
+        data = json.load(data_file)
+
     if mode == "dense_optical_flow":
-        x = load_data.load_XDenseOptFlowInput()
-        y_actual = load_data.load_yDenseOptFlowLabels()
+        x = load_data.load_XDenseOptFlowInput(data)
+        y_actual = load_data.load_yDenseOptFlowLabels(data)
     else:
-        x = load_data.load_xInput()
-        y_actual = load_data.load_yLabels()
+        x = load_data.load_xInput(data)
+        y_actual = load_data.load_yLabels(data)
 
     # evaluate the weights
     print('evaluating....')
@@ -121,7 +124,7 @@ def main(images_extracted_path, mode="dense_optical_flow", video_generation="no"
 
     # Plotting speed actual vs predicted
     plt.figure(0)
-    plt.plot(y, label = 'Training Prediction')
+    #plt.plot(y, label = 'Training Prediction')
     plt.plot(y_predicted, label = 'Training Prediction smoothed')
     plt.plot(y_actual, label = 'Actual Dataset')
     plt.title('speed: Actual vs Predicted')
@@ -138,9 +141,6 @@ def main(images_extracted_path, mode="dense_optical_flow", video_generation="no"
     # annotate the images and save
     if video_generation == "yes":
         print('generating video.....')
-        # load the json data
-        with open(data_labels_path) as data_file:
-            data = json.load(data_file)
 
         for i in range(0, len(y_predicted)):
             if mode == "dense_optical_flow":
@@ -187,10 +187,16 @@ def main(images_extracted_path, mode="dense_optical_flow", video_generation="no"
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='inference for speed estimation')
     parser.add_argument(
-        '--extracted_images_path',
+        '--extracted_images',
         type=str,
         default='./data_extracted/',
         help='path for the extarcted images'
+    )
+    parser.add_argument(
+        '--data_json',
+        type=str,
+        default="./speed_challenge/drive.json",
+        help='path for the json file, which has the image names and the speeds'
     )
     parser.add_argument(
         '--mode',
@@ -199,11 +205,11 @@ if __name__ == '__main__':
         help='mode to indicate whether the inference should happen with rgb or dense optical flow'
     )
     parser.add_argument(
-        '--video_generation',
+        '--video',
         type=str,
         default="yes",
         help='flag to indicate whether the video should be generated'
     )
     args = parser.parse_args()
 
-    main(args.extracted_images_path, args.mode, args.video_generation)
+    main(args.extracted_images, args.data_json, args.mode, args.video,)
