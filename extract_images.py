@@ -14,7 +14,8 @@ import subprocess
 # no.of images extracted
 count=0
 
-def main(video_path, data_json_path, data_extracted_path):
+data_extracted_path='./data_extrated/'
+def main(video_path, data_json_path):
     # if data json file is not avilable
     if data_json_path != "no":
         #load the json data
@@ -59,11 +60,6 @@ if __name__ == '__main__':
         type=str,
         help='path for the json file if available, usage: --data_json "./speed_challenge/drive.json" or --data_json "no" if not avialable'
     )
-    parser.add_argument(
-        '--data_extracted',
-        type=str,
-        help='path where the extracted images are stored, usage: --data_extracted "./data_extracted/"'
-    )
     args = parser.parse_args()
 
-    main(args.video, args.data_json, args.data_extracted)
+    main(args.video, args.data_json)

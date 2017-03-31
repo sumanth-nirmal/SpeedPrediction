@@ -74,8 +74,13 @@ def getOpticalFlowDense(image, next_image, vis_optical_flow=False):
     next_image_grey = cv2.cvtColor(next_image, cv2.COLOR_RGB2GRAY)
 
     # compute the optical flow dense
-    flow = cv2.calcOpticalFlowFarneback(image_grey, next_image_grey, None, 0.5, 1, 15, 2, 5, 1.3, 0)
-
+    # hack to handle both opencv2 and opencv 3
+    ver=int(cv2.__version__.split('.')[0])
+    if ver < 3:
+        flow = cv2.calcOpticalFlowFarneback(image_grey, next_image_grey, 0.5, 1, 15, 2, 5, 1.3, 0)
+    else:
+        flow = cv2.calcOpticalFlowFarneback(image_grey, next_image_grey, None, 0.5, 1, 15, 2, 5, 1.3, 0)
+    
     # get the magnitude and angle of the optical flow vectors
     mag, ang = cv2.cartToPolar(flow[...,0], flow[...,1])
 

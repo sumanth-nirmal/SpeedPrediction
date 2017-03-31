@@ -33,7 +33,11 @@ def drawDenseOptFlow(image, next_image):
     next_image_grey = cv2.cvtColor(next_image, cv2.COLOR_RGB2GRAY)
 
     # compute the optical flow dense
-    flow = cv2.calcOpticalFlowFarneback(image_grey, next_image_grey, None, 0.5, 1, 15, 2, 5, 1.3, 0)
+    ver=int(cv2.__version__.split('.')[0])
+    if ver < 3:
+        flow = cv2.calcOpticalFlowFarneback(image_grey, next_image_grey, 0.5, 1, 15, 2, 5, 1.3, 0)
+    else:
+        flow = cv2.calcOpticalFlowFarneback(image_grey, next_image_grey, None, 0.5, 1, 15, 2, 5, 1.3, 0)
 
     # draw the flow
     step=16
@@ -116,10 +120,10 @@ def main(images_extracted_path, data_json_path, mode="dense_optical_flow", video
 
     # smoothing the predicted data, can be removed
     if mode == "dense_optical_flow":
-        # smooth using Savitzky–Golay filter
+        # smooth using Savitzky-Golay filter
         y_predicted = scipy.signal.savgol_filter(y, 101, 3) # 101 window length and fit using 3 order polynomial
     else:
-        # smooth using Savitzky–Golay filter
+        # smooth using Savitzky-Golay filter
         y_predicted = scipy.signal.savgol_filter(y, 51, 3) # 51 window length and fit using 3 order polynomial
 
     # Plotting speed actual vs predicted
