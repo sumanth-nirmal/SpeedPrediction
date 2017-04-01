@@ -16,7 +16,7 @@ import cv2
 import numpy as np
 from moviepy.editor import ImageSequenceClip
 import argparse
-import scipy
+import scipy.signal
 
 # path for the predicted images
 data_output_path='./data_predicted/'
@@ -24,6 +24,9 @@ data_output_path='./data_predicted/'
 # weights path
 model_path='./model_weights/model.json'
 model_weights_path='./model_weights/'
+
+# extracted images path
+images_extracted_path='./data_extracted/'
 
 # optical flow dense draw on the video
 # reference from here: https://github.com/opencv/opencv/blob/master/samples/python/opt_flow.py
@@ -78,7 +81,7 @@ def drawDenseOptFlow(image, next_image):
 
     return vis_flow, vis_hsv, vis_hsv_rgb
 
-def main(images_extracted_path, data_json_path, mode="dense_optical_flow", video_generation="no"):
+def main(data_json_path, mode="dense_optical_flow", video_generation="no"):
 
     json_file = open(model_path, 'r')
     loaded_model_val = json_file.read()
@@ -101,6 +104,7 @@ def main(images_extracted_path, data_json_path, mode="dense_optical_flow", video
     with open(data_json_path) as data_file:
         data = json.load(data_file)
 
+    print("loading the test data...")
     if mode == "dense_optical_flow":
         x = load_data.load_XDenseOptFlowInput(data)
         y_actual = load_data.load_yDenseOptFlowLabels(data)
@@ -191,12 +195,6 @@ def main(images_extracted_path, data_json_path, mode="dense_optical_flow", video
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='inference for speed estimation')
     parser.add_argument(
-        '--extracted_images',
-        type=str,
-        default='./data_extracted/',
-        help='path for the extarcted images'
-    )
-    parser.add_argument(
         '--data_json',
         type=str,
         default="./speed_challenge/drive.json",
@@ -216,4 +214,4 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
 
-    main(args.extracted_images, args.data_json, args.mode, args.video,)
+    main(args.data_json, args.mode, args.video,)

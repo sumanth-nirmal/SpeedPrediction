@@ -14,7 +14,9 @@ import subprocess
 # no.of images extracted
 count=0
 
-data_extracted_path='./data_extrated/'
+# extracted images path
+data_extracted_path='./data_extracted/'
+
 def main(video_path, data_json_path):
     # if data json file is not avilable
     if data_json_path != "no":
