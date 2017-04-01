@@ -27,7 +27,14 @@ def crop(image, top_percent, bottom_percent, left_percent, right_percent):
     left = int(np.ceil(image.shape[1] * left_percent))
     right = image.shape[1] - int(np.ceil(image.shape[1] * right_percent))
 
-    return image[top:bottom, left:right] #image[100:440, :-90]
+    return image[top:bottom, left:right]
+
+# canny edge detector
+def cannyMask(image):
+    mask = cv2.Canny(image, 100, 300)
+    cv2.imshow('mask', mask)
+    cv2.waitKey(1)
+    return mask
 
 def estimateSpeed(cap, vis_enable="no"):
     track_len = 10
@@ -57,7 +64,7 @@ def estimateSpeed(cap, vis_enable="no"):
             ret, frame = cap.read()
 
             # crop the image
-            frame = crop(frame, 0.2, 0.08, 0, 1.14)
+            frame = crop(frame, 0.5, 0.05, 0.2, 0.1)
 
             # convert to grey scale
             frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -86,8 +93,8 @@ def estimateSpeed(cap, vis_enable="no"):
                 cv2.polylines(vis, [np.int32(tr) for tr in tracks], False, (0, 255, 0))
 
                 print(p1)
-                cv2.imshow('t1', vis)
-                cv2.waitKey(0)
+                cv2.imshow('optical_flow', vis)
+                cv2.waitKey(1)
 
             if frame_idx % detect_interval == 0:
                 mask = np.zeros_like(frame_gray)
